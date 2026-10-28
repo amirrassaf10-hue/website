@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دنیای جادویی</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--a:#8b5cf6;--b:#22d3ee;--c:#f0abfc}
+html,body{background:#05010f;color:#f5f3ff;font-family:Tahoma,Vazirmatn,sans-serif;overflow-x:hidden}
+body{cursor:none}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.cursor{position:fixed;left:0;top:0;width:28px;height:28px;border-radius:50%;background:radial-gradient(circle,#fff 0%,var(--b) 30%,transparent 70%);mix-blend-mode:screen;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .25s,height .25s}
+.cursor.hover{width:64px;height:64px}
+.spark{position:fixed;width:5px;height:5px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);pointer-events:none;z-index:9998;animation:fade .7s forwards}
+@keyframes fade{to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0)}}
+main{position:relative;z-index:1}
+section{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center}
+h1{font-size:clamp(2.6rem,8vw,6rem);line-height:1.2;background:linear-gradient(90deg,var(--a),var(--b),var(--c),var(--a));background-size:300% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 5s linear infinite}
+@keyframes shine{to{background-position:300% center}}
+.sub{opacity:.75;margin:20px 0 34px;font-size:1.1rem;max-width:560px;line-height:1.9}
+button{padding:14px 36px;border:0;border-radius:999px;font-size:1rem;color:#fff;cursor:none;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 0 30px #8b5cf666;transition:transform .2s,box-shadow .2s}
+button:hover{transform:scale(1.08);box-shadow:0 0 50px #22d3ee88}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;width:min(1100px,100%);margin-top:20px;perspective:1000px}
+.card{position:relative;height:300px;border-radius:24px;overflow:hidden;background:linear-gradient(135deg,#1e1b4b,#0c4a6e);transform-style:preserve-3d;transition:transform .15s ease-out;box-shadow:0 20px 60px #0008}
+.card img{width:100%;height:100%;object-fit:cover;display:block;transform:translateZ(20px)}
+.card .label{position:absolute;inset:auto 0 0 0;padding:20px;text-align:right;font-weight:bold;background:linear-gradient(transparent,#000d);transform:translateZ(50px)}
+footer{position:relative;z-index:1;padding:40px;opacity:.5;font-size:.9rem}
+@media (pointer:coarse){body,button{cursor:auto}.cursor{display:none}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="cursor"></div>
+
+<main>
+  <section>
+    <h1>جادو را لمس کن</h1>
+    <p class="sub">هر جا ماوس ببری جرقه می‌زند. روی صفحه کلیک کن تا دنیا منفجر شود.</p>
+    <button>شروع ماجراجویی</button>
+  </section>
+
+  <section>
+    <h1 style="font-size:clamp(2rem,5vw,3.5rem)">گالری رازها</h1>
+    <div class="grid">
+      <div class="card"><img src="images/1.webp" alt="" onerror="this.style.display='none'"><div class="label">اثر ۱</div></div>
+      <div class="card"><img src="images/2.webp" alt="" onerror="this.style.display='none'"><div class="label">اثر ۲</div></div>
+      <div class="card"><img src="images/3.webp" alt="" onerror="this.style.display='none'"><div class="label">اثر ۳</div></div>
+      <div class="card"><img src="images/4.webp" alt="" onerror="this.style.display='none'"><div class="label">اثر ۴</div></div>
+      <div class="card"><img src="images/5.webp" alt="" onerror="this.style.display='none'"><div class="label">اثر ۵</div></div>
+      <div class="card"><img src="images/6.webp" alt="" onerror="this.style.display='none'"><div class="label">اثر ۶</div></div>
+    </div>
+  </section>
+</main>
+
+<footer>ساخته‌شده با جادو ✦</footer>
+
+<script>
+/* ---------- Three.js background ---------- */
+const canvas = document.getElementById('bg');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+camera.position.z = 6;
+function resize(){
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+resize();
+addEventListener('resize', resize);
+
+const COUNT = 2500;
+const base = new Float32Array(COUNT*3), pos = new Float32Array(COUNT*3);
+const vel = new Float32Array(COUNT*3), col = new Float32Array(COUNT*3);
+const palette = [[.55,.36,.96],[.13,.83,.93],[.94,.67,.99]];
+for (let i = 0; i < COUNT; i++) {
+  const k = i*3;
+  base[k]   = (Math.random()-.5)*20;
+  base[k+1] = (Math.random()-.5)*14;
+  base[k+2] = (Math.random()-.5)*10;
+  pos.set(base.subarray(k, k+3), k);
+  col.set(palette[i%3], k);
+}
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+pGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+const points = new THREE.Points(pGeo, new THREE.PointsMaterial({
+  size:.05, vertexColors:true, transparent:true, opacity:.9,
+  blending:THREE.AdditiveBlending, depthWrite:false
+}));
+scene.add(points);
+
+const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6, 1),
+  new THREE.MeshBasicMaterial({color:0xa78bfa, wireframe:true, transparent:true, opacity:.5}));
+const inner = new THREE.Mesh(new THREE.TorusKnotGeometry(.9, .25, 160, 24),
+  new THREE.MeshBasicMaterial({color:0x22d3ee, wireframe:true, transparent:true, opacity:.35}));
+scene.add(core, inner);
+
+let tx=0, ty=0, mx=0, my=0, t=0;
+addEventListener('mousemove', e => {
+  tx = e.clientX/innerWidth*2-1;
+  ty = -(e.clientY/innerHeight*2-1);
+});
+
+function burst(x, y){
+  const wx = (x/innerWidth*2-1)*8, wy = -(y/innerHeight*2-1)*5;
+  for (let i = 0; i < COUNT; i++) {
+    const k = i*3;
+    const dx = base[k]-wx, dy = base[k+1]-wy;
+    const d = Math.hypot(dx, dy) + .5;
+    const f = 1.2 / d;
+    vel[k]   += dx/d*f*.6;
+    vel[k+1] += dy/d*f*.6;
+  }
+}
+
+function animate(){
+  t += .01;
+  mx += (tx-mx)*.05; my += (ty-my)*.05;
+  core.rotation.x = t*.6 + my*.5;
+  core.rotation.y = t*.9 + mx*.5;
+  inner.rotation.x = -t*.4;
+  inner.rotation.y = t*.5;
+  core.scale.setScalar(1 + Math.sin(t*2)*.05);
+  camera.position.x = mx*.5;
+  camera.position.y = my*.3;
+  camera.lookAt(0,0,0);
+
+  const p = pGeo.attributes.position.array;
+  for (let i = 0; i < COUNT; i++) {
+    const k = i*3;
+    vel[k]*=.94; vel[k+1]*=.94; vel[k+2]*=.94;
+    p[k]   += vel[k]   + (base[k]  -p[k])  *.01;
+    p[k+1] += vel[k+1] + (base[k+1]-p[k+1])*.01 + Math.sin(t+i)*.0008;
+    p[k+2] += vel[k+2] + (base[k+2]-p[k+2])*.01;
+  }
+  pGeo.attributes.position.needsUpdate = true;
+  points.rotation.y = t*.05;
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+/* ---------- Orb cursor + sparks ---------- */
+const cur = document.querySelector('.cursor');
+let px=innerWidth/2, py=innerHeight/2, cx=px, cy=py;
+function curLoop(){
+  cx += (px-cx)*.25; cy += (py-cy)*.25;
+  cur.style.left = cx+'px'; cur.style.top = cy+'px';
+  requestAnimationFrame(curLoop);
+}
+curLoop();
+
+function spark(x, y){
+  const s = document.createElement('div');
+  s.className = 'spark';
+  s.style.left = x+'px'; s.style.top = y+'px';
+  s.style.setProperty('--dx', (Math.random()-.5)*60+'px');
+  s.style.setProperty('--dy', (Math.random()-.5)*60+'px');
+  document.body.appendChild(s);
+  setTimeout(() => s.remove(), 700);
+}
+
+addEventListener('mousemove', e => {
+  px = e.clientX; py = e.clientY;
+  if (Math.random() < .5) spark(px, py);
+});
+addEventListener('click', e => burst(e.clientX, e.clientY));
+
+document.querySelectorAll('button, .card').forEach(el => {
+  el.addEventListener('mouseenter', () => cur.classList.add('hover'));
+  el.addEventListener('mouseleave', () => cur.classList.remove('hover'));
+});
+
+/* ---------- 3D tilt cards ---------- */
+document.querySelectorAll('.card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX - r.left)/r.width - .5;
+    const y = (e.clientY - r.top)/r.height - .5;
+    card.style.transform = `rotateY(${x*25}deg) rotateX(${-y*25}deg)`;
+  });
+  card.addEventListener('mouseleave', () => card.style.transform = '');
+});
+</script>
+</body>
+</html>
